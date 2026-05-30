@@ -1,0 +1,61 @@
+@hostname = localhost
+@port = 5000 # Adjust if your port is different
+@baseUrl = http://{{hostname}}:{{port}}/api/v1
+
+# After logging in as a client, paste the token here (including "Bearer ")
+@clientToken = Bearer YOUR_CLIENT_TOKEN_HERE 
+
+# --- Workflow Variables (for testing specific campaign records) ---
+@myCampaignId = 1 # Replace with an actual campaign ID belonging to the logged-in client
+# --- End Workflow Variables ---
+
+###
+# ==============================================================================
+# Client Campaign & Record Access Workflow
+# ==============================================================================
+#
+# This file outlines API calls for a logged-in client to view their campaigns
+# and the records associated with those campaigns.
+#
+# ==============================================================================
+
+### Step 1: Client Login (to get @clientToken)
+# Replace with actual client credentials that exist in your database.
+# Ensure this client is associated with some campaigns for testing.
+# @name loginClientUser
+POST {{baseUrl}}/auth/client/login
+Content-Type: application/json
+
+{
+  "email": "testclient.new@example.com", # Replace with your test client's email
+  "password": "clientPassword123"     # Replace with your test client's password
+}
+
+# After running the above, copy the full token (e.g., "Bearer eyJhbGciOiJIUzI1NiI...")
+# from the response and paste it into the @clientToken variable at the top of this file.
+
+###
+# Step 2: Get Campaigns for the Authenticated Client
+# Purpose: Client views all campaigns associated with their account.
+# Requires: Valid @clientToken.
+# @name clientGetMyCampaigns
+GET {{baseUrl}}/client-access/my-campaigns
+Authorization: {{clientToken}}
+
+# The response will be an array of campaign objects.
+# Each campaign should include details of associated radio stations.
+
+###
+# Step 3: Get Records for a Specific Campaign Belonging to the Client
+# Purpose: Client views all records (from all radio stations) for one of their campaigns.
+# Requires: Valid @clientToken and @myCampaignId set to a campaign ID from Step 2 response.
+# @name clientGetRecordsForMyCampaign
+GET {{baseUrl}}/client-access/my-campaigns/{{myCampaignId}}/records
+Authorization: {{clientToken}}
+
+# The response will be an array of record objects for the specified campaign.
+# Each record should include:
+# - Its own details (status, dates, validation_comment if any).
+# - The name of the RadioStation that submitted it.
+# - An array of its AudioFiles, where each audio file has a `url` for streaming.
+#   e.g., audioFile.url might be "http://localhost:5000/uploads/audio/filename.mp3" 

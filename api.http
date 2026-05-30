@@ -1,0 +1,632 @@
+@hostname = localhost
+@port = 5000
+@baseUrl = http://{{hostname}}:{{port}}/api/v1
+@adminToken = Bearer TOKEN_VALUE_AFTER_LOGIN
+@clientId = 1
+@pathToContractFile = ./sample-contract.pdf # IMPORTANT: Create a dummy file here for testing
+@radioStationId = 1
+@exampleDivisionId = 1 # IMPORTANT: Replace with an actual division_id from your DB after seeding
+@radioStationId1 = 1 # Example Radio Station ID - UPDATE IF NEEDED
+@radioStationId2 = 2 # Example Radio Station ID - UPDATE IF NEEDED
+
+###
+# ==============================================================================
+# Auth Endpoints
+# ==============================================================================
+
+### Login to get admin token
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "usernameOrEmail": "admin@example.com",
+  "password": "Admin123!"
+}
+
+### Validate Token
+# Requires a valid token obtained from login.
+# Update @adminToken with the token from the login response.
+# @name validateToken
+GET {{baseUrl}}/auth/validate-token
+Authorization: {{adminToken}}
+
+### Login for Radio Station
+# @name loginRadioStation
+POST {{baseUrl}}/auth/station/login
+Content-Type: application/json
+
+{
+  "email": "contact@mytestradio-div1.com", # Use an email of a radio station that has a password set
+  "password": "stationPassword123"
+}
+
+### Login for Client
+# @name loginClient
+POST {{baseUrl}}/auth/client/login
+Content-Type: application/json
+
+{
+  "email": "testclient.new@example.com", # Use an email of a client that has a password set
+  "password": "clientPassword123"
+}
+
+
+###
+# ==============================================================================
+# Client Endpoints (Require Admin Authentication)
+# ==============================================================================
+
+### Get all clients
+# @name getAllClients
+GET {{baseUrl}}/clients
+Authorization: {{adminToken}}
+
+### Get client by ID
+# Update @clientId with the ID of the client you want to fetch.
+# @name getClientById
+GET {{baseUrl}}/clients/{{clientId}}
+Authorization: {{adminToken}}
+
+### Create a new client
+# @name createClient
+POST {{baseUrl}}/clients
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "New Test Client",
+  "description": "A client for testing purposes",
+  "email": "testclient.new@example.com",
+  "company_name": "Test Client Inc.",
+  "focal_point_person": "Test User",
+  "focal_point_contact": "123-456-7890",
+  "postal_code": "90210",
+  "contact": "098-765-4321",
+  "region": "California",
+  "logo": null
+}
+
+### Update an existing client
+# Update @clientId with the ID of the client you want to update.
+# @name updateClient
+PUT {{baseUrl}}/clients/{{clientId}}
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated Test Client Name",
+  "description": "An updated description for the test client",
+  "email": "testclient.updated@example.com",
+  "company_name": "Test Client Corp.",
+  "focal_point_person": "Updated Test User",
+  "region": "Nevada"
+}
+
+### Set client password (specific endpoint - though clients might not log in directly)
+# Update @clientId with the ID of the client.
+# @name setClientPassword
+PATCH {{baseUrl}}/clients/{{clientId}}/set-password
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "password": "newSecurePassword123!"
+}
+
+### Delete a client
+# Update @clientId with the ID of the client you want to delete.
+# @name deleteClient
+DELETE {{baseUrl}}/clients/{{clientId}}
+Authorization: {{adminToken}}
+
+###
+# ==============================================================================
+# Radio Station Endpoints (Require Admin Authentication)
+# ==============================================================================
+
+### Create a new radio station
+# @name createRadioStation
+POST {{baseUrl}}/radio-stations
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "My Test Radio Station Central Division",
+  "division_id": {{exampleDivisionId}}, # Replaced region, department, subdivision
+  "description": "A popular radio station for testing, linked to a division.",
+  "frequency": "100.5 FM",
+  "email": "contact@mytestradio-div1.com",
+  "responsible_person": "Station Manager",
+  "longitude": 11.5213,
+  "latitude": 3.86667,
+  "altitude": 750
+}
+
+### Get all radio stations
+# @name getAllRadioStations
+GET {{baseUrl}}/radio-stations
+Authorization: {{adminToken}}
+
+### Get radio station by ID
+# Update @radioStationId with the ID of the station to fetch.
+# @name getRadioStationById
+GET {{baseUrl}}/radio-stations/{{radioStationId}}
+Authorization: {{adminToken}}
+
+### Update an existing radio station
+# Update @radioStationId with the ID of the station to update.
+# @name updateRadioStation
+PUT {{baseUrl}}/radio-stations/{{radioStationId}}
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "My Updated Test Radio Station Central Division",
+  "division_id": {{exampleDivisionId}}, # Can also update division_id
+  "frequency": "101.0 FM",
+  "responsible_person": "New Station Manager"
+}
+
+### Delete a radio station
+# Update @radioStationId with the ID of the station to delete.
+# @name deleteRadioStation
+DELETE {{baseUrl}}/radio-stations/{{radioStationId}}
+Authorization: {{adminToken}}
+
+### ========================================================
+### Set Radio Station Password
+### ========================================================
+
+# Sets/updates the password for a specific radio station.
+# Requires Authentication (Admin).
+# Replace {{stationId}} with the actual ID of the radio station.
+
+@stationId = 3 # Example ID, change as needed
+
+PATCH {{baseUrl}}/radio-stations/{{stationId}}/set-password
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "password": "NewSecurePassword123!"
+}
+
+###
+# ==============================================================================
+# Language Endpoints
+# ==============================================================================
+@languageId = 1
+
+### Create a new language (Admin Protected)
+# @name createLanguage
+POST {{baseUrl}}/languages
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "English"
+}
+
+### Create another language (Admin Protected)
+# @name createFrenchLanguage
+POST {{baseUrl}}/languages
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "French"
+}
+
+### Get all languages (Public)
+# @name getAllLanguages
+GET {{baseUrl}}/languages
+
+### Get language by ID (Public)
+# Update @languageId with the ID of the language to fetch.
+# @name getLanguageById
+GET {{baseUrl}}/languages/{{languageId}}
+
+###
+# ==============================================================================
+# Campaign Endpoints (Require Admin Authentication)
+# ==============================================================================
+@campaignId = 1
+
+### Create a new campaign (with contract file upload)
+# Must include client_id. Optionally include radio_station_ids array.
+# @name createCampaignWithFile
+POST {{baseUrl}}/campaigns
+Authorization: {{adminToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryCampaignCreate
+
+------WebKitFormBoundaryCampaignCreate
+Content-Disposition: form-data; name="client_id"
+
+{{clientId}}
+------WebKitFormBoundaryCampaignCreate
+Content-Disposition: form-data; name="name"
+
+Summer PDF Campaign 2024
+------WebKitFormBoundaryCampaignCreate
+Content-Disposition: form-data; name="label"
+
+Q3 Summer PDF Promo
+------WebKitFormBoundaryCampaignCreate
+Content-Disposition: form-data; name="start_date"
+
+2024-07-15
+------WebKitFormBoundaryCampaignCreate
+Content-Disposition: form-data; name="end_date"
+
+2024-09-15
+------WebKitFormBoundaryCampaignCreate
+Content-Disposition: form-data; name="radio_station_ids[0]"
+
+{{radioStationId1}}
+------WebKitFormBoundaryCampaignCreate
+Content-Disposition: form-data; name="radio_station_ids[1]"
+
+{{radioStationId2}}
+------WebKitFormBoundaryCampaignCreate
+Content-Disposition: form-data; name="contractFile"; filename="{{pathToContractFile}}"
+Content-Type: application/pdf
+
+< {{pathToContractFile}}
+------WebKitFormBoundaryCampaignCreate--
+
+### Create a new campaign (JSON body - without file, with radio stations)
+# Must include client_id. Optionally include radio_station_ids array.
+# @name createCampaignJsonWithStations
+POST {{baseUrl}}/campaigns
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "client_id": {{clientId}},
+  "name": "Autumn Event Campaign 2024",
+  "label": "Q4 Autumn Event",
+  "start_date": "2024-10-01",
+  "end_date": "2024-12-31",
+  "radio_station_ids": [{{radioStationId1}}, {{radioStationId2}}]
+}
+
+### Create a new campaign (JSON body - without file, without radio stations)
+# @name createCampaignJsonNoStations
+POST {{baseUrl}}/campaigns
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "client_id": {{clientId}},
+  "name": "Winter Promo 2025",
+  "label": "Q1 Winter",
+  "start_date": "2025-01-01",
+  "end_date": "2025-03-31"
+}
+
+### Get all campaigns
+# @name getAllCampaigns
+GET {{baseUrl}}/campaigns
+Authorization: {{adminToken}}
+
+### Get campaign by ID
+# Update @campaignId with the ID of the campaign to fetch.
+# @name getCampaignById
+GET {{baseUrl}}/campaigns/{{campaignId}}
+Authorization: {{adminToken}}
+
+### Update an existing campaign (with new contract file & changing stations)
+# Update @campaignId. client_id cannot be updated via this endpoint.
+# Sending radio_station_ids replaces the existing associations.
+# Sending an empty array [] removes all associations.
+# Not sending radio_station_ids leaves associations untouched.
+# @name updateCampaignWithFile
+PUT {{baseUrl}}/campaigns/{{campaignId}}
+Authorization: {{adminToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryCampaignUpdate
+
+------WebKitFormBoundaryCampaignUpdate
+Content-Disposition: form-data; name="name"
+
+Summer PDF Campaign 2024 (Updated Name With File)
+------WebKitFormBoundaryCampaignUpdate
+Content-Disposition: form-data; name="label"
+
+Q3 Summer PDF Promo (Updated Label)
+------WebKitFormBoundaryCampaignUpdate
+Content-Disposition: form-data; name="end_date"
+
+2024-09-20
+------WebKitFormBoundaryCampaignUpdate
+Content-Disposition: form-data; name="radio_station_ids[0]"
+
+{{radioStationId2}} # Example: Only associate with station 2 now
+------WebKitFormBoundaryCampaignUpdate
+Content-Disposition: form-data; name="contractFile"; filename="{{pathToContractFile}}"
+Content-Type: application/pdf
+
+< {{pathToContractFile}}
+------WebKitFormBoundaryCampaignUpdate--
+
+### Update an existing campaign (JSON body - fields only, remove stations, remove contract)
+# Update @campaignId.
+# Set contract fields to null/empty to remove the file.
+# Send empty radio_station_ids to remove associations.
+# @name updateCampaignJsonRemoveStationsContract
+PUT {{baseUrl}}/campaigns/{{campaignId}}
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Autumn Event Campaign 2024 (Updated Name)",
+  "contract_file_path": null,
+  "contract_file_original_name": null,
+  "radio_station_ids": []
+}
+
+### Update an existing campaign (JSON body - fields only, keep stations, keep contract)
+# Update @campaignId.
+# Omit contract fields and radio_station_ids to leave them unchanged.
+# @name updateCampaignJsonKeepStationsContract
+PUT {{baseUrl}}/campaigns/{{campaignId}}
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Winter Promo 2025 (Updated Name)",
+  "label": "Q1 Winter Promo Updated"
+}
+
+### Delete a campaign
+# @name deleteCampaign
+DELETE {{baseUrl}}/campaigns/{{campaignId}}
+Authorization: {{adminToken}}
+
+###
+# ==============================================================================
+# Record Endpoints (Require Admin Authentication)
+# ==============================================================================
+@recordId = 1
+# Assuming campaignId=1 and radioStationId=1 exist for creating a record
+
+### Create a new record
+# @name createRecord
+POST {{baseUrl}}/records
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "campaign_id": 1,
+  "radio_station_id": 1,
+  "submission_date": "2024-06-01",
+  "start_date": "2024-06-05",
+  "end_date": "2024-06-15",
+  "status": "pending_validation" 
+}
+
+### Get all records
+# @name getAllRecords
+GET {{baseUrl}}/records
+Authorization: {{adminToken}}
+
+### Get record by ID
+# Update @recordId with the ID of the record to fetch.
+# @name getRecordById
+GET {{baseUrl}}/records/{{recordId}}
+Authorization: {{adminToken}}
+
+### Update an existing record (e.g., validate it)
+# Update @recordId with the ID of the record to update.
+# @name updateRecordStatus
+PUT {{baseUrl}}/records/{{recordId}}
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "status": "validated",
+  "validated_by_user_id": 1, # Assuming admin user with ID 1 is validating
+  "validation_date": "{{$datetime iso8601}}"
+}
+
+### Update an existing record (change dates)
+# @name updateRecordDates
+PUT {{baseUrl}}/records/{{recordId}}
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "start_date": "2024-06-06",
+  "end_date": "2024-06-12"
+}
+
+
+### Delete a record
+# @name deleteRecord
+DELETE {{baseUrl}}/records/{{recordId}}
+Authorization: {{adminToken}}
+
+###
+# ==============================================================================
+# AudioFile CRUD Endpoints (Protected by Admin Auth)
+# ==============================================================================
+
+### Create Audio File
+# Requires a record_id to associate the audio file with.
+# The 'audioFile' field should contain the actual audio file.
+# duration_seconds is optional; if provided, it will be stored.
+POST {{baseUrl}}/audio-files
+Authorization: Bearer {{adminToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="record_id"
+
+1
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="duration_seconds"
+
+180
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="audioFile"; filename="test_audio.mp3"
+Content-Type: audio/mpeg
+
+< ./test_audio.mp3
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### Get All Audio Files
+GET {{baseUrl}}/audio-files
+Authorization: Bearer {{adminToken}}
+
+### Get Audio File by ID
+# Replace 1 with an actual audio_file_id
+GET {{baseUrl}}/audio-files/1
+Authorization: Bearer {{adminToken}}
+
+### Update Audio File (Metadata and/or File)
+# Replace 1 with an actual audio_file_id
+# To update only metadata, omit the 'audioFile' part and change Content-Type to application/json
+# To replace the file, include the 'audioFile' part as in the create request.
+# Here's an example replacing the file and updating duration:
+PATCH {{baseUrl}}/audio-files/1
+Authorization: Bearer {{adminToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="record_id"
+
+1
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="duration_seconds"
+
+210
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="audioFile"; filename="updated_audio.mp3"
+Content-Type: audio/mpeg
+
+< ./updated_audio.mp3
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### Update Audio File (Metadata Only)
+# Replace 1 with an actual audio_file_id
+PATCH {{baseUrl}}/audio-files/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "duration_seconds": 220,
+  "record_id": 1 
+}
+
+
+### Delete Audio File by ID
+# Replace 1 with an actual audio_file_id
+DELETE {{baseUrl}}/audio-files/1
+Authorization: Bearer {{adminToken}}
+
+###
+# Language Endpoints
+###
+
+# @name CreateLanguage
+POST {{baseUrl}}/languages HTTP/1.1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "English"
+}
+
+###
+
+# @name CreateLanguageFrench
+POST {{baseUrl}}/languages HTTP/1.1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "French"
+}
+
+###
+
+# @name GetAllLanguages
+GET {{baseUrl}}/languages HTTP/1.1
+Authorization: Bearer {{adminToken}}
+
+###
+
+# @name GetLanguageById
+GET {{baseUrl}}/languages/1 HTTP/1.1
+Authorization: Bearer {{adminToken}}
+
+###
+
+# @name UpdateLanguage
+PUT {{baseUrl}}/languages/1 HTTP/1.1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "English UK"
+}
+
+###
+
+# @name DeleteLanguage
+# Note: This will fail if the language is associated with a Radio Station
+DELETE {{baseUrl}}/languages/2 HTTP/1.1
+Authorization: Bearer {{adminToken}}
+
+###
+# ==============================================================================
+# Region Endpoints
+# ==============================================================================
+@regionId = 1
+
+### Create a new region (Requires Admin Auth)
+# @name createRegion
+POST {{baseUrl}}/regions
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Centre"
+}
+
+### Create another region (Requires Admin Auth)
+# @name createRegionLittoral
+POST {{baseUrl}}/regions
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Littoral"
+}
+
+### Get all regions (Public)
+# @name getAllRegions
+GET {{baseUrl}}/regions
+
+### Get region by ID (Public)
+# Update @regionId with the ID of the region to fetch.
+# @name getRegionById
+GET {{baseUrl}}/regions/{{regionId}}
+
+### Update an existing region (Requires Admin Auth)
+# Update @regionId with the ID of the region to update.
+# @name updateRegion
+PUT {{baseUrl}}/regions/{{regionId}}
+Authorization: {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Central Region"
+}
+
+### Delete a region (Requires Admin Auth)
+# Update @regionId with the ID of the region to delete.
+# Note: This will fail if the region has associated Divisions.
+# @name deleteRegion
+DELETE {{baseUrl}}/regions/{{regionId}}
+Authorization: {{adminToken}} 

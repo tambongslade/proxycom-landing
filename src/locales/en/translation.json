@@ -1,0 +1,20 @@
+{
+  "forgotPassword": "Forgot Password",
+  "resetEmailSent": "Password reset instructions have been sent to your email",
+  "resetRequestError": "Error sending reset instructions",
+  "enterOTP": "Enter OTP",
+  "otpVerified": "OTP verified successfully",
+  "otpVerificationError": "Error verifying OTP",
+  "newPassword": "New Password",
+  "confirmPassword": "Confirm Password",
+  "passwordsDoNotMatch": "Passwords do not match",
+  "passwordResetSuccess": "Password has been reset successfully",
+  "passwordResetError": "Error resetting password",
+  "sending": "Sending...",
+  "verifying": "Verifying...",
+  "resetting": "Resetting...",
+  "sendResetLink": "Send Reset Link",
+  "verifyOTP": "Verify OTP",
+  "resetPassword": "Reset Password",
+  "userNotFound": "No account found with this email address."
+} 

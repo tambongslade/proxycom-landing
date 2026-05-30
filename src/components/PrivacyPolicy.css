@@ -1,0 +1,115 @@
+.privacy-policy-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  line-height: 1.7;
+  font-family: inherit;
+}
+
+.privacy-header {
+  text-align: center;
+  margin-bottom: 50px;
+  padding-bottom: 30px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.privacy-logo {
+  margin-bottom: 30px;
+}
+
+.privacy-logo img {
+  height: 80px;
+  width: auto;
+}
+
+.privacy-header h1 {
+  font-size: 2.5rem;
+  color: var(--primary-purple);
+  margin: 0;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary-purple) 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.privacy-content {
+  color: var(--dark-text);
+  font-size: 16px;
+}
+
+.privacy-intro {
+  margin-bottom: 40px;
+  padding: 30px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%);
+  border-radius: 12px;
+  border-left: 4px solid var(--primary-purple);
+}
+
+.company-highlight {
+  font-size: 18px;
+  margin: 0;
+  font-style: italic;
+}
+
+.company-highlight strong {
+  color: var(--primary-purple);
+  font-weight: 700;
+}
+
+.privacy-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.privacy-section {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  transition: all 0.3s ease;
+}
+
+.privacy-section:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.15);
+}
+
+.privacy-section p {
+  margin: 0;
+  text-align: justify;
+}
+
+.privacy-section strong {
+  color: var(--primary-purple);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .privacy-policy-page {
+    padding: 20px 15px;
+  }
+  
+  .privacy-header h1 {
+    font-size: 2rem;
+  }
+  
+  .privacy-logo img {
+    height: 60px;
+  }
+  
+  .privacy-intro,
+  .privacy-section {
+    padding: 20px;
+  }
+  
+  .privacy-content {
+    font-size: 15px;
+  }
+  
+  .company-highlight {
+    font-size: 16px;
+  }
+}

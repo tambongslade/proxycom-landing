@@ -1,0 +1,196 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000; /* Ensure it's above other content like the header */
+  backdrop-filter: blur(6px); /* Add background blur */
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Animation for modal opening */
+@keyframes modalFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-content,
+.modern-login-modal {
+  animation: modalFadeIn 0.38s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.modal-content {
+  background-color: var(--white, #fff);
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 400px; /* Adjust as needed */
+  position: relative;
+  color: var(--dark-text, #2c3e50);
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  color: var(--medium-grey, #ccc);
+  cursor: pointer;
+  padding: 5px;
+  line-height: 1;
+}
+.modal-close-btn:hover {
+  color: var(--dark-grey, #666);
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  text-align: center;
+  color: var(--primary-blue, #0066CC); /* Match your design */
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--body-text, #555759);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--light-grey, #e0e0e0);
+  border-radius: 6px;
+  font-size: 1rem;
+  color: var(--dark-text, #2c3e50);
+  background-color: var(--white, #fff);
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary-blue, #0066CC);
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+}
+
+.login-submit-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--primary-blue, #0066CC);
+  color: var(--white, #fff);
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.login-submit-btn:hover {
+  background-color: var(--primary-purple, #7F00FF); /* Darker shade or your accent color */
+}
+
+.login-submit-btn:disabled {
+  background-color: var(--medium-grey, #ccc);
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: var(--accent-orange, #FF7F50); /* Or your error color */
+  background-color: rgba(255, 127, 80, 0.1);
+  border: 1px solid var(--accent-orange, #FF7F50);
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.modern-login-modal {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(80, 80, 180, 0.16), 0 2px 8px rgba(80,80,180,0.08);
+  padding: 2.5rem 2rem 2rem 2rem;
+  max-width: 370px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  min-width: 320px;
+}
+
+.modern-close-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1.5rem;
+  color: #6e42d3;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(80,80,180,0.07);
+  transition: background 0.18s, color 0.18s;
+  z-index: 2;
+}
+.modern-close-btn:hover {
+  background: #ede9fe;
+  color: #232946;
+}
+
+.modern-login-btn {
+  background: #6e42d3;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 0;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-top: 8px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(80,80,180,0.07);
+  transition: background 0.18s, transform 0.18s;
+  width: 100%;
+}
+.modern-login-btn:hover {
+  background: #4b2bb7;
+  transform: translateY(-2px) scale(1.03);
+}
+
+/* Style for the logo at the top (if needed) */
+.modern-login-modal img {
+  display: block;
+  margin: 0 auto 10px auto;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(80,80,180,0.10);
+}
+
+/* Responsive for small screens */
+@media (max-width: 480px) {
+  .modern-login-modal {
+    padding: 1.2rem 0.5rem 1.5rem 0.5rem;
+    min-width: unset;
+    max-width: 98vw;
+  }
+} 
