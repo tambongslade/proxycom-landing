@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import logoImg from '../assets/logo.png';
 import './Header.css';
 import { useAuth } from '../context/AuthContext';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const Header: React.FC = () => {
   const { t } = useTranslation();
@@ -73,6 +74,7 @@ const Header: React.FC = () => {
       </div>
 
       <div className="header-right">
+        <LanguageSwitcher />
         <div className="auth-buttons-desktop">
           {isLoggedIn ? (
             <>

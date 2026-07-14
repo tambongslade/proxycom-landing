@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { apiClient } from '../../utils/apiClient';
 import Header from '../../components/Header';
 import './CampaignDetail.css';
 import { getLogoUrl } from './CampagneList';
+import { downloadCampaignProgramExport } from './builderApi';
 import {
   buildCampaignStats,
   formatAirtime,
@@ -230,6 +231,17 @@ const StatusTag: React.FC<{ status: string; label: string }> = ({ status, label 
   return <span className={`cd-status-tag ${key}`}><i />{label}</span>;
 };
 
+// Module-level so its identity is stable across renders — defining it inside
+// the page component would remount the whole tree on every render.
+const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="page-container cd-page">
+    <Header />
+    <main className="main-content campaign-detail-page">
+      <div className="cd-shell">{children}</div>
+    </main>
+  </div>
+);
+
 const CampaignDetail: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { id: campaignId } = useParams<{ id: string }>();
@@ -241,6 +253,10 @@ const CampaignDetail: React.FC = () => {
     queryKey: ['campaignRecords', campaignId],
     queryFn: () => fetchCampaignRecords(campaignId!),
     enabled: isLoggedIn && !!campaignId,
+  });
+
+  const programExport = useMutation<void, Error, void>({
+    mutationFn: () => downloadCampaignProgramExport(campaignId!, records?.[0]?.campaign?.name),
   });
 
   // Group records by radio station with status + media breakdowns.
@@ -367,15 +383,6 @@ const CampaignDetail: React.FC = () => {
   };
 
   // ---------- Loading / error / empty ----------
-  const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="page-container cd-page">
-      <Header />
-      <main className="main-content campaign-detail-page">
-        <div className="cd-shell">{children}</div>
-      </main>
-    </div>
-  );
-
   if (isLoading) {
     return (
       <Shell>
@@ -500,6 +507,15 @@ const CampaignDetail: React.FC = () => {
           </div>
           <div className="cd-hero-actions">
             <Link to="/campagne" className="cd-btn cd-btn-ghost">← {t('backToCampaigns')}</Link>
+            <button
+              className="cd-btn cd-btn-ghost"
+              onClick={() => programExport.mutate()}
+              disabled={programExport.isPending}
+              title={t('cbExportProgramSub', 'Download the broadcast plan as Excel')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              {programExport.isPending ? t('cbExporting', 'Exporting…') : t('cbExportProgram', 'Program (Excel)')}
+            </button>
             <button className="cd-btn cd-btn-excel" onClick={handleExportCsv} disabled={!hasRecords} title={t('exportCsvSub', 'Download as Excel / CSV')}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
               {t('exportExcel', 'Download Excel')}
@@ -511,6 +527,12 @@ const CampaignDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {programExport.isError && (
+        <div className="error" style={{ marginBottom: 16 }}>
+          {t('cbExportError', 'Program export failed')}: {programExport.error?.message}
+        </div>
+      )}
 
       {(!records || records.length === 0) ? (
         <div className="cd-card">

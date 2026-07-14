@@ -318,6 +318,283 @@
   }
 }
 
+/* =====================================================================
+   CLIENT CAMPAIGN LIST — redesigned layout
+   ===================================================================== */
+
+.cl-hero {
+  background: linear-gradient(120deg, #6e42d3 0%, #8f5fe8 60%, #a37cf0 100%);
+  border-radius: 22px;
+  padding: 30px 32px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+  box-shadow: 0 10px 30px rgba(110, 66, 211, 0.25);
+}
+
+.cl-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+
+.cl-hero-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #fff;
+  padding: 4px;
+  flex: 0 0 auto;
+}
+
+.cl-hero-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.cl-hero-title {
+  margin: 2px 0 4px;
+  font-size: 1.65rem;
+  line-height: 1.2;
+}
+
+.cl-hero-sub {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.cl-new-btn {
+  background: #fff !important;
+  color: #6e42d3 !important;
+  box-shadow: 0 6px 16px rgba(30, 10, 80, 0.25);
+  flex: 0 0 auto;
+}
+
+.cl-new-btn:hover {
+  background: #f3edff !important;
+}
+
+/* ---- Stats row ---- */
+
+.cl-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.cl-stat {
+  background: #fff;
+  border: 1px solid #ece9f6;
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: 0 4px 14px rgba(76, 42, 160, 0.05);
+}
+
+.cl-stat-value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: #6e42d3;
+  line-height: 1.1;
+}
+
+.cl-stat-label {
+  font-size: 12.5px;
+  color: #8b86a3;
+  font-weight: 600;
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ---- Toolbar ---- */
+
+.cl-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.cl-filter-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cl-filter-chip {
+  border: 1.5px solid #ddd6f3;
+  background: #fff;
+  color: #4b4368;
+  border-radius: 999px;
+  padding: 7px 15px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.15s;
+}
+
+.cl-filter-chip:hover {
+  border-color: #b9a3ea;
+}
+
+.cl-filter-chip.active {
+  background: #6e42d3;
+  border-color: #6e42d3;
+  color: #fff;
+}
+
+.cl-chip-count {
+  background: rgba(110, 66, 211, 0.12);
+  color: inherit;
+  border-radius: 999px;
+  font-size: 11.5px;
+  padding: 1px 7px;
+}
+
+.cl-filter-chip.active .cl-chip-count {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ---- Campaign cards ---- */
+
+.cl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.cl-card {
+  background: #fff;
+  border: 1px solid #ece9f6;
+  border-radius: 18px;
+  padding: 18px 20px;
+  text-decoration: none;
+  color: #232946;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(76, 42, 160, 0.06);
+  transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+}
+
+.cl-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(76, 42, 160, 0.14);
+  border-color: #cbb8f2;
+}
+
+.cl-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cl-card-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+
+.cl-card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1a1535;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cl-card-label {
+  font-size: 13px;
+  color: #8b86a3;
+  margin-top: -4px;
+}
+
+.cl-card-dates,
+.cl-card-stations {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  color: #5a5670;
+}
+
+.cl-card-rejection {
+  font-size: 13px;
+  color: #b91c1c;
+  background: #fdecec;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-style: italic;
+}
+
+.cl-card-cta {
+  margin-top: auto;
+  padding-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6e42d3;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* ---- Empty state ---- */
+
+.cl-empty {
+  background: #fff;
+  border: 1.5px dashed #d8ccf3;
+  border-radius: 20px;
+  padding: 54px 24px;
+  text-align: center;
+  color: #8b86a3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 26px;
+}
+
+.cl-empty p {
+  margin: 0;
+  font-size: 15.5px;
+}
+
+@media screen and (max-width: 640px) {
+  .cl-hero {
+    padding: 22px 20px;
+  }
+  .cl-hero-title {
+    font-size: 1.3rem;
+  }
+  .cl-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cl-toolbar .cal-search {
+    width: 100%;
+  }
+}
+
 .campaign-card-modern {
   background: #fff;
   border-radius: 18px;

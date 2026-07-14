@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://api.proxycom.net/api/v1'; // Production API
+export const API_BASE_URL = 'https://api.proxycom.net/api/v1'; // Production API
 
 interface ApiClientOptions extends RequestInit {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
