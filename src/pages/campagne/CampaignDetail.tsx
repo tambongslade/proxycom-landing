@@ -7,14 +7,15 @@ import { apiClient } from '../../utils/apiClient';
 import Header from '../../components/Header';
 import './CampaignDetail.css';
 import { getLogoUrl } from './CampagneList';
-import { downloadCampaignProgramExport } from './builderApi';
+import {
+  downloadCampaignProgramExport,
+  downloadCampaignReportPdf,
+  downloadCampaignReportXlsx,
+} from './builderApi';
 import {
   buildCampaignStats,
   formatAirtime,
-  exportCampaignCsv,
-  openCampaignPrintReport,
   type ReportRecord,
-  type ReportLabels,
 } from '../../utils/campaignReport';
 
 const SERVER_ROOT_URL = 'https://api.proxycom.net'; // Used for constructing audio file URLs
@@ -59,6 +60,13 @@ interface CampaignRecord {
   submission_date: string;
   start_date: string;
   end_date: string;
+  scheduled_time?: string | null;
+  upload_status?: string | null;
+  late_by_minutes?: number | null;
+  source?: string | null;
+  aired_started_at?: string | null;
+  aired_ended_at?: string | null;
+  detection_flag?: string | null;
   validation_comment?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -111,6 +119,23 @@ const fetchCampaignRecords = async (campaignId: string): Promise<CampaignRecord[
 const formatDate = (dateStr: string) =>
   new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
+// Full date + time — used for the record submission timestamp.
+const formatDateTime = (dateStr: string, locale: string) =>
+  new Date(dateStr).toLocaleString(locale, {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+// Clock time only (aired start / end timestamps).
+const formatClockTime = (dateStr: string, locale: string) =>
+  new Date(dateStr).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+// "08:00:00" → "08:00"
+const formatScheduledTime = (time: string) => time.slice(0, 5);
+
 const STATUS_COLORS: Record<string, string> = {
   validated: '#16a34a',
   pending: '#d97706',
@@ -127,38 +152,61 @@ const normalizeStatus = (status: string): 'validated' | 'pending' | 'rejected' |
 // --- Custom audio player ---
 const CustomAudioPlayer: React.FC<{ file: AudioFile }> = React.memo(({ file }) => {
   const { t } = useTranslation();
-  const fullAudioUrl = `${SERVER_ROOT_URL}/uploads/${file.file_path}`;
+  // file_path can contain characters that break a raw URL — encode each segment.
+  const fullAudioUrl = `${SERVER_ROOT_URL}/uploads/${file.file_path.split('/').map(encodeURIComponent).join('/')}`;
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [hasError, setHasError] = useState(false);
 
   const togglePlayPause = () => {
-    if (!audioRef.current) return;
-    if (isPlaying) audioRef.current.pause();
-    else audioRef.current.play();
-    setIsPlaying(!isPlaying);
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (!audio.paused) {
+      audio.pause();
+      return;
+    }
+    setHasError(false);
+    // play() returns a promise that rejects when the file can't be fetched or decoded.
+    audio.play().catch(() => setHasError(true));
   };
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (audio) {
-      const setAudioData = () => {
-        setDuration(audio.duration);
-        setCurrentTime(audio.currentTime);
-      };
-      const setAudioTime = () => setCurrentTime(audio.currentTime);
-      const onEnded = () => setIsPlaying(false);
-      audio.addEventListener('loadedmetadata', setAudioData);
-      audio.addEventListener('timeupdate', setAudioTime);
-      audio.addEventListener('ended', onEnded);
-      return () => {
-        audio.removeEventListener('loadedmetadata', setAudioData);
-        audio.removeEventListener('timeupdate', setAudioTime);
-        audio.removeEventListener('ended', onEnded);
-      };
-    }
-  }, [audioRef]);
+    if (!audio) return;
+    const onDuration = () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) setDuration(audio.duration);
+    };
+    const onLoadedMetadata = () => {
+      onDuration();
+      setCurrentTime(audio.currentTime);
+    };
+    const setAudioTime = () => setCurrentTime(audio.currentTime);
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    const onEnded = () => setIsPlaying(false);
+    const onError = () => {
+      setIsPlaying(false);
+      setHasError(true);
+    };
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('durationchange', onDuration);
+    audio.addEventListener('timeupdate', setAudioTime);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('error', onError);
+    return () => {
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('durationchange', onDuration);
+      audio.removeEventListener('timeupdate', setAudioTime);
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('error', onError);
+    };
+  }, []);
 
   const formatTime = (time: number) => {
     if (!Number.isFinite(time)) return '0:00';
@@ -167,42 +215,69 @@ const CustomAudioPlayer: React.FC<{ file: AudioFile }> = React.memo(({ file }) =
     return `${minutes}:${seconds}`;
   };
 
+  // Some proof clips have no duration in their metadata — fall back to the API value.
+  const displayDuration = duration > 0 ? duration : file.duration_seconds || 0;
+  const progressPct = displayDuration > 0 ? Math.min(100, (currentTime / displayDuration) * 100) : 0;
+
   return (
-    <div className="custom-audio-player-wrapper">
+    <div className={`pc-player ${hasError ? 'has-error' : ''}`}>
       <audio ref={audioRef} src={fullAudioUrl} preload="metadata" />
-      <div className="audio-controls">
-        <button
-          onClick={togglePlayPause}
-          className={`play-pause-button ${isPlaying ? 'playing' : ''}`}
-        >
-          {isPlaying ? t('pauseButton', 'Pause') : t('playButton', 'Play')}
-        </button>
-        <div className="audio-file-name">
-          <a href={fullAudioUrl} target="_blank" rel="noopener noreferrer" className="audio-file-link" title={file.original_name}>
-            {file.original_name}
-          </a>
+      <button
+        onClick={togglePlayPause}
+        className={`pc-play ${isPlaying ? 'playing' : ''}`}
+        aria-label={isPlaying ? t('pauseButton', 'Pause') : t('playButton', 'Play')}
+        title={isPlaying ? t('pauseButton', 'Pause') : t('playButton', 'Play')}
+      >
+        {isPlaying ? (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72c0 .8.87 1.3 1.56.88l10.5-6.86a1.03 1.03 0 000-1.76L9.56 4.26A1.03 1.03 0 008 5.14z"/></svg>
+        )}
+      </button>
+      <div className="pc-body">
+        <div className="pc-top">
+          <span className="pc-name" title={file.original_name}>{file.original_name}</span>
+          <span className="pc-time">{formatTime(currentTime)} / {formatTime(displayDuration)}</span>
         </div>
-        <div className="time-display">{formatTime(currentTime)} / {formatTime(duration)}</div>
-      </div>
-      {duration > 0 && (
         <input
           type="range"
           min="0"
-          max={duration}
+          max={displayDuration || 1}
+          step="0.1"
           value={currentTime}
+          disabled={!displayDuration}
           onChange={(e) => {
             if (audioRef.current) audioRef.current.currentTime = Number(e.target.value);
           }}
-          className="progress-bar"
+          className="pc-seek"
+          style={{ background: `linear-gradient(to right, var(--cd-brand) ${progressPct}%, #e5e0f5 ${progressPct}%)` }}
+          aria-label={file.original_name}
         />
-      )}
+        {hasError && (
+          <div className="pc-error">
+            {t('audioLoadError', 'This audio file could not be played. It may be missing or in an unsupported format.')}{' '}
+            <a href={fullAudioUrl} target="_blank" rel="noopener noreferrer">{t('tryDownloadInstead', 'Try downloading it instead')}</a>
+          </div>
+        )}
+      </div>
+      <a
+        className="pc-download"
+        href={fullAudioUrl}
+        download={file.original_name}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={t('downloadAudio', 'Download')}
+        aria-label={t('downloadAudio', 'Download')}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </a>
     </div>
   );
 });
 CustomAudioPlayer.displayName = 'CustomAudioPlayer';
 
 const CustomVideoPlayer: React.FC<{ file: VideoFile }> = ({ file }) => {
-  const fullVideoUrl = `${SERVER_ROOT_URL}/uploads/${file.file_path}`;
+  const fullVideoUrl = `${SERVER_ROOT_URL}/uploads/${file.file_path.split('/').map(encodeURIComponent).join('/')}`;
   return (
     <div className="custom-video-player-wrapper">
       <video src={fullVideoUrl} controls style={{ width: '100%', maxWidth: 400, borderRadius: 10, marginTop: 8 }} />
@@ -245,7 +320,7 @@ const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const CampaignDetail: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { id: campaignId } = useParams<{ id: string }>();
-  const { isLoggedIn, client } = useAuth();
+  const { isLoggedIn } = useAuth();
   const [selectedStationId, setSelectedStationId] = useState<number | null>(null);
   const [stationLogos, setStationLogos] = useState<{ [stationId: number]: string | undefined }>({});
 
@@ -257,6 +332,14 @@ const CampaignDetail: React.FC = () => {
 
   const programExport = useMutation<void, Error, void>({
     mutationFn: () => downloadCampaignProgramExport(campaignId!, records?.[0]?.campaign?.name),
+  });
+
+  // Server-rendered "Bilan de Diffusion" downloads (client-access report endpoints).
+  const reportPdf = useMutation<void, Error, void>({
+    mutationFn: () => downloadCampaignReportPdf(campaignId!, records?.[0]?.campaign?.name),
+  });
+  const reportXlsx = useMutation<void, Error, void>({
+    mutationFn: () => downloadCampaignReportXlsx(campaignId!, records?.[0]?.campaign?.name),
   });
 
   // Group records by radio station with status + media breakdowns.
@@ -329,58 +412,9 @@ const CampaignDetail: React.FC = () => {
 
   const currentCampaignName = records?.[0]?.campaign?.name || t('campaignDetails', 'Campaign Details');
 
-  // Build translated labels for the exported report.
-  const reportLabels: ReportLabels = {
-    csvHeaders: {
-      recordId: t('record', 'Record'),
-      station: t('station', 'Station'),
-      status: t('status', 'Status'),
-      submissionDate: t('submissionDate', 'Submission Date'),
-      startDate: t('recordStartDate', 'Start Date'),
-      endDate: t('recordEndDate', 'End Date'),
-      audioFiles: t('audioFiles', 'Audio Files'),
-      videoFiles: t('videoFilesTitle', 'Video Files'),
-      airtime: t('kpiAirtime', 'Total airtime'),
-      comment: t('validationComment', 'Validation Comment'),
-    },
-    statusLabels: {
-      validated: t('validated', 'Validated'),
-      pending: t('pending', 'Pending'),
-      rejected: t('rejected', 'Rejected'),
-      other: t('status', 'Other'),
-    },
-    report: {
-      title: t('reportTitle', 'Campaign Report'),
-      generatedOn: t('generatedOn', 'Generated on'),
-      client: t('client', 'Client'),
-      period: t('campaignPeriod', 'Period'),
-      summary: t('summary', 'Summary'),
-      totalRecords: t('kpiTotalRecords', 'Total records'),
-      stations: t('kpiStations', 'Stations'),
-      validated: t('validated', 'Validated'),
-      pending: t('pending', 'Pending'),
-      rejected: t('rejected', 'Rejected'),
-      audioSpots: t('kpiAudioSpots', 'Audio spots'),
-      videoSpots: t('kpiVideoSpots', 'Video spots'),
-      totalAirtime: t('kpiAirtime', 'Total airtime'),
-      statusBreakdown: t('statusBreakdown', 'Status breakdown'),
-      stationBreakdown: t('stationBreakdown', 'Station breakdown'),
-      detailedRecords: t('detailedRecords', 'Detailed records'),
-      print: t('printReport', 'Print / Save as PDF'),
-      noData: t('reportNoData', 'No records available for this campaign yet.'),
-    },
-  };
-
-  const clientName = client?.company_name || client?.name;
   const locale = i18n.language?.startsWith('fr') ? 'fr-FR' : i18n.language?.startsWith('es') ? 'es-ES' : 'en-US';
 
   const hasRecords = !!records && records.length > 0;
-  const handleExportPdf = () => {
-    openCampaignPrintReport(currentCampaignName, (records ?? []) as ReportRecord[], reportLabels, clientName, locale);
-  };
-  const handleExportCsv = () => {
-    exportCampaignCsv(currentCampaignName, (records ?? []) as ReportRecord[], reportLabels, locale);
-  };
 
   // ---------- Loading / error / empty ----------
   if (isLoading) {
@@ -429,13 +463,75 @@ const CampaignDetail: React.FC = () => {
         </div>
 
         <section>
-          {selectedGroup.records.map((record) => (
+          {selectedGroup.records.map((record) => {
+            const source = (record.source || '').toLowerCase();
+            const isLate = record.upload_status === 'late';
+            const isOnTime = record.upload_status === 'on_time';
+            const hasVideos = record.videoFiles && record.videoFiles.length > 0;
+            return (
             <div key={record.id} className="cd-record">
               <div className="cd-record-bar">
-                <span className="cd-record-id">{t('record', 'Record')} #{record.id}</span>
-                <StatusTag status={record.status} label={t(normalizeStatus(record.status), record.status)} />
+                <div className="cd-record-bar-left">
+                  <span className="cd-record-id">{t('record', 'Record')} #{record.id}</span>
+                  <StatusTag status={record.status} label={t(normalizeStatus(record.status), record.status)} />
+                </div>
+                <div className="cd-record-badges">
+                  {source === 'auto' && (
+                    <span className="cd-badge cd-badge-auto">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 11a9 9 0 019 9M4 4a16 16 0 0116 16"/><circle cx="5" cy="19" r="1"/></svg>
+                      {t('sourceAuto', 'Auto-detected')}
+                    </span>
+                  )}
+                  {source === 'manual' && (
+                    <span className="cd-badge cd-badge-manual">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      {t('sourceManual', 'Manual upload')}
+                    </span>
+                  )}
+                  {isOnTime && <span className="cd-badge cd-badge-ontime">✓ {t('onTime', 'On time')}</span>}
+                  {isLate && (
+                    <span className="cd-badge cd-badge-late">
+                      {t('lateBy', 'Late by {{count}} min', { count: record.late_by_minutes ?? 0 })}
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="cd-record-grid">
+
+              {/* Timeline strip: submission time / scheduled / aired window */}
+              <div className="cd-record-times">
+                <div className="cd-time-item">
+                  <span className="cd-time-lbl">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    {t('submittedOn', 'Submitted on')}
+                  </span>
+                  <span className="cd-time-val">
+                    {record.createdAt ? formatDateTime(record.createdAt, locale) : formatDate(record.submission_date)}
+                  </span>
+                </div>
+                {record.scheduled_time && (
+                  <div className="cd-time-item">
+                    <span className="cd-time-lbl">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      {t('scheduledTimeLabel', 'Scheduled time')}
+                    </span>
+                    <span className="cd-time-val">{formatScheduledTime(record.scheduled_time)}</span>
+                  </div>
+                )}
+                {record.aired_started_at && (
+                  <div className="cd-time-item">
+                    <span className="cd-time-lbl">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/></svg>
+                      {t('airedWindow', 'Aired')}
+                    </span>
+                    <span className="cd-time-val">
+                      {formatClockTime(record.aired_started_at, locale)}
+                      {record.aired_ended_at && <> → {formatClockTime(record.aired_ended_at, locale)}</>}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className={`cd-record-grid ${hasVideos ? '' : 'no-video'}`}>
                 <div>
                   <h5 className="cd-panel-title">{t('recordDetailsTitle', 'Record Details')}</h5>
                   <p className="cd-info-row"><span>{t('recordSubmissionDate', 'Submission Date')}</span><span>{formatDate(record.submission_date)}</span></p>
@@ -454,24 +550,23 @@ const CampaignDetail: React.FC = () => {
                       ))}
                     </ul>
                   ) : (
-                    <p style={{ color: '#9ca3af', fontSize: 14, fontStyle: 'italic' }}>{t('noAudioFilesForRecord', 'No audio files.')}</p>
+                    <p className="cd-no-media">{t('noAudioFilesForRecord', 'No audio files.')}</p>
                   )}
                 </div>
-                <div>
-                  <h5 className="cd-panel-title">{t('videoFilesTitle', 'Video Files')}</h5>
-                  {record.videoFiles && record.videoFiles.length > 0 ? (
+                {hasVideos && (
+                  <div>
+                    <h5 className="cd-panel-title">{t('videoFilesTitle', 'Video Files')}</h5>
                     <ul className="video-files-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {record.videoFiles.map((file) => (
                         <li key={file.id} className="video-file-item"><CustomVideoPlayer file={file} /></li>
                       ))}
                     </ul>
-                  ) : (
-                    <p style={{ color: '#9ca3af', fontSize: 14, fontStyle: 'italic' }}>{t('noVideoFilesForRecord', 'No video files.')}</p>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </section>
       </Shell>
     );
@@ -516,13 +611,23 @@ const CampaignDetail: React.FC = () => {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               {programExport.isPending ? t('cbExporting', 'Exporting…') : t('cbExportProgram', 'Program (Excel)')}
             </button>
-            <button className="cd-btn cd-btn-excel" onClick={handleExportCsv} disabled={!hasRecords} title={t('exportCsvSub', 'Download as Excel / CSV')}>
+            <button
+              className="cd-btn cd-btn-excel"
+              onClick={() => reportXlsx.mutate()}
+              disabled={!hasRecords || reportXlsx.isPending}
+              title={t('exportCsvSub', 'Download as Excel / CSV')}
+            >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
-              {t('exportExcel', 'Download Excel')}
+              {reportXlsx.isPending ? t('cbExporting', 'Exporting…') : t('exportExcel', 'Download Excel')}
             </button>
-            <button className="cd-btn cd-btn-pdf" onClick={handleExportPdf} disabled={!hasRecords} title={t('exportPdfSub', 'Printable summary & breakdown')}>
+            <button
+              className="cd-btn cd-btn-pdf"
+              onClick={() => reportPdf.mutate()}
+              disabled={!hasRecords || reportPdf.isPending}
+              title={t('exportPdfSub', 'Printable summary & breakdown')}
+            >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              {t('exportPdf', 'PDF report')}
+              {reportPdf.isPending ? t('cbExporting', 'Exporting…') : t('exportPdf', 'PDF report')}
             </button>
           </div>
         </div>
@@ -531,6 +636,11 @@ const CampaignDetail: React.FC = () => {
       {programExport.isError && (
         <div className="error" style={{ marginBottom: 16 }}>
           {t('cbExportError', 'Program export failed')}: {programExport.error?.message}
+        </div>
+      )}
+      {(reportPdf.isError || reportXlsx.isError) && (
+        <div className="error" style={{ marginBottom: 16 }}>
+          {t('cbExportError', 'Export failed')}: {(reportPdf.error || reportXlsx.error)?.message}
         </div>
       )}
 

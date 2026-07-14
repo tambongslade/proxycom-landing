@@ -318,10 +318,10 @@ export const importSchedules = (
   );
 };
 
-// ---------- Program export (xlsx download) ----------
+// ---------- Binary downloads (xlsx / pdf) ----------
 
 // The apiClient only handles JSON, so binary downloads go through fetch directly.
-const downloadXlsx = async (endpoint: string, fallbackName: string): Promise<void> => {
+const downloadFile = async (endpoint: string, fallbackName: string): Promise<void> => {
   const token = localStorage.getItem('authToken');
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -355,7 +355,7 @@ export const downloadCampaignProgramExport = (
   campaignName?: string,
   date?: string | null
 ): Promise<void> =>
-  downloadXlsx(
+  downloadFile(
     `/client-access/my-campaigns/${campaignId}/program/export${date ? `?date=${date}` : ''}`,
     `programme_${campaignId}_${safeName(campaignName)}${date ? `_${date}` : ''}.xlsx`
   );
@@ -366,9 +366,42 @@ export const downloadScheduleTemplate = (
   campaignId: number | string,
   campaignName?: string
 ): Promise<void> =>
-  downloadXlsx(
+  downloadFile(
     `/client-access/my-campaigns/${campaignId}/schedules/template`,
     `template_${campaignId}_${safeName(campaignName)}.xlsx`
+  );
+
+// ---------- Bilan de Diffusion (server-rendered campaign report) ----------
+
+// from/to are optional YYYY-MM-DD bounds; the server defaults to the campaign window.
+const reportQuery = (from?: string | null, to?: string | null): string => {
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+};
+
+export const downloadCampaignReportPdf = (
+  campaignId: number | string,
+  campaignName?: string,
+  from?: string | null,
+  to?: string | null
+): Promise<void> =>
+  downloadFile(
+    `/client-access/my-campaigns/${campaignId}/report/pdf${reportQuery(from, to)}`,
+    `bilan_${campaignId}_${safeName(campaignName)}.pdf`
+  );
+
+export const downloadCampaignReportXlsx = (
+  campaignId: number | string,
+  campaignName?: string,
+  from?: string | null,
+  to?: string | null
+): Promise<void> =>
+  downloadFile(
+    `/client-access/my-campaigns/${campaignId}/report/xlsx${reportQuery(from, to)}`,
+    `bilan_${campaignId}_${safeName(campaignName)}.xlsx`
   );
 
 // ---------- Helpers ----------
