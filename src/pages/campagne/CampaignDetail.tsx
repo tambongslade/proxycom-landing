@@ -11,6 +11,8 @@ import {
   downloadCampaignProgramExport,
   downloadCampaignReportPdf,
   downloadCampaignReportXlsx,
+  downloadCampaignPeriodicReport,
+  type ReportGranularity,
 } from './builderApi';
 import {
   buildCampaignStats,
@@ -323,6 +325,10 @@ const CampaignDetail: React.FC = () => {
   const { isLoggedIn } = useAuth();
   const [selectedStationId, setSelectedStationId] = useState<number | null>(null);
   const [stationLogos, setStationLogos] = useState<{ [stationId: number]: string | undefined }>({});
+  // Periodic report controls (daily / weekly / monthly + optional date bounds).
+  const [reportGranularity, setReportGranularity] = useState<ReportGranularity>('daily');
+  const [reportFrom, setReportFrom] = useState('');
+  const [reportTo, setReportTo] = useState('');
 
   const { data: records, isLoading, isError, error } = useQuery<CampaignRecord[], Error>({
     queryKey: ['campaignRecords', campaignId],
@@ -340,6 +346,20 @@ const CampaignDetail: React.FC = () => {
   });
   const reportXlsx = useMutation<void, Error, void>({
     mutationFn: () => downloadCampaignReportXlsx(campaignId!, records?.[0]?.campaign?.name),
+  });
+
+  // Daily / weekly / monthly report downloads (same builder as the Bilan de
+  // Diffusion, sliced by period; empty dates = full campaign window).
+  const periodicReport = useMutation<void, Error, 'pdf' | 'xlsx'>({
+    mutationFn: (format) =>
+      downloadCampaignPeriodicReport(
+        campaignId!,
+        reportGranularity,
+        format,
+        records?.[0]?.campaign?.name,
+        reportFrom || null,
+        reportTo || null
+      ),
   });
 
   // Group records by radio station with status + media breakdowns.
@@ -663,6 +683,95 @@ const CampaignDetail: React.FC = () => {
               icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg>} />
             <KpiCard color="#8338ec" label={t('kpiAirtime', 'Total airtime')} value={formatAirtime(stats.airtimeSeconds)}
               icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>} />
+          </div>
+
+          {/* Periodic reports: daily / weekly / monthly, PDF or Excel */}
+          <div className="cd-card cd-periodic">
+            <h3 className="cd-section-title">{t('periodicReportsTitle', 'Periodic reports')}</h3>
+            <p className="cd-periodic-sub">
+              {t('periodicReportsSub', 'Broadcast trend, dayparts and per-station details, sliced by day, week or month.')}
+            </p>
+            <div className="cd-periodic-controls">
+              <div className="cd-seg" role="group" aria-label={t('periodicReportsTitle', 'Periodic reports')}>
+                {(['daily', 'weekly', 'monthly'] as ReportGranularity[]).map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    className={`cd-seg-btn ${reportGranularity === g ? 'active' : ''}`}
+                    onClick={() => setReportGranularity(g)}
+                  >
+                    {g === 'daily'
+                      ? t('granularityDaily', 'Daily')
+                      : g === 'weekly'
+                        ? t('granularityWeekly', 'Weekly')
+                        : t('granularityMonthly', 'Monthly')}
+                  </button>
+                ))}
+              </div>
+              <div className="cd-range">
+                <label className="cd-range-field">
+                  <span>{t('reportFrom', 'From')}</span>
+                  <input
+                    type="date"
+                    value={reportFrom}
+                    max={reportTo || undefined}
+                    onChange={(e) => setReportFrom(e.target.value)}
+                  />
+                </label>
+                <label className="cd-range-field">
+                  <span>{t('reportTo', 'To')}</span>
+                  <input
+                    type="date"
+                    value={reportTo}
+                    min={reportFrom || undefined}
+                    onChange={(e) => setReportTo(e.target.value)}
+                  />
+                </label>
+                {(reportFrom || reportTo) && (
+                  <button
+                    type="button"
+                    className="cd-range-clear"
+                    onClick={() => { setReportFrom(''); setReportTo(''); }}
+                    title={t('reportRangeClear', 'Reset to the full campaign period')}
+                    aria-label={t('reportRangeClear', 'Reset to the full campaign period')}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <div className="cd-periodic-actions">
+                <button
+                  className="cd-btn cd-btn-excel"
+                  onClick={() => periodicReport.mutate('xlsx')}
+                  disabled={periodicReport.isPending}
+                  title={t('exportCsvSub', 'Download as Excel / CSV')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+                  {periodicReport.isPending && periodicReport.variables === 'xlsx'
+                    ? t('cbExporting', 'Exporting…')
+                    : 'Excel'}
+                </button>
+                <button
+                  className="cd-btn cd-btn-pdf"
+                  onClick={() => periodicReport.mutate('pdf')}
+                  disabled={periodicReport.isPending}
+                  title={t('exportPdfSub', 'Printable summary & breakdown')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  {periodicReport.isPending && periodicReport.variables === 'pdf'
+                    ? t('cbExporting', 'Exporting…')
+                    : 'PDF'}
+                </button>
+              </div>
+            </div>
+            <p className="cd-periodic-hint">
+              {t('periodicReportsHint', 'Leave the dates empty to cover the whole campaign period.')}
+            </p>
+            {periodicReport.isError && (
+              <div className="error" style={{ marginTop: 12 }}>
+                {t('cbExportError', 'Export failed')}: {periodicReport.error?.message}
+              </div>
+            )}
           </div>
 
           {/* Status breakdown */}

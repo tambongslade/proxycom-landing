@@ -404,6 +404,38 @@ export const downloadCampaignReportXlsx = (
     `bilan_${campaignId}_${safeName(campaignName)}.xlsx`
   );
 
+// ---------- Periodic reports (daily / weekly / monthly) ----------
+
+export type ReportGranularity = 'daily' | 'weekly' | 'monthly';
+
+// The periodic report routes live on the admin campaign surface
+// (/campaigns/:id/report/:granularity[.pdf|.xlsx]); the client-access mirror
+// is tried second so client tokens keep working if/when it is exposed there.
+export const downloadCampaignPeriodicReport = async (
+  campaignId: number | string,
+  granularity: ReportGranularity,
+  format: 'pdf' | 'xlsx',
+  campaignName?: string,
+  from?: string | null,
+  to?: string | null
+): Promise<void> => {
+  const suffix = `/report/${granularity}/${format}${reportQuery(from, to)}`;
+  const fallbackName = `bilan_${granularity}_${campaignId}_${safeName(campaignName)}.${format}`;
+  const attempts = [
+    `/campaigns/${campaignId}${suffix}`,
+    `/client-access/my-campaigns/${campaignId}${suffix}`,
+  ];
+  let lastError: unknown;
+  for (const endpoint of attempts) {
+    try {
+      return await downloadFile(endpoint, fallbackName);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Report download failed');
+};
+
 // ---------- Helpers ----------
 
 // "08:30:00" -> "08:30" for display and <input type="time">
